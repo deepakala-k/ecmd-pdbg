@@ -907,9 +907,9 @@ uint32_t queryConfigExistChips(const ecmdChipTarget & i_target, std::list<ecmdCh
     // Save what we got from recursing down, or just being happy at this level
     o_chipData.push_back(chipData);
   }
-  
-  //Show up explorer only if the explorer scoms are requested
-  if ((i_target.chipType == "explorer") ||
+
+  //Show up explorer/odyssey only if the respective scoms are requested 
+  if ((i_target.chipType == "explorer") || (i_target.chipType == "odyssey") ||
       (i_target.chipTypeState == ECMD_TARGET_FIELD_WILDCARD))
   {
       //Next, Fill in explorer targets
@@ -920,11 +920,9 @@ uint32_t queryConfigExistChips(const ecmdChipTarget & i_target, std::list<ecmdCh
         if ((pdbg_target_index(ocmbTarget) < 0) || ((i_target.posState == ECMD_TARGET_FIELD_VALID) && 
           (getFapiUnitPos(ocmbTarget) != i_target.pos)))
           continue;
-
         //Add to the data structure only if functional
         if(!isFunctionalTarget(ocmbTarget)) 
           continue;
-
         pdbg_target_probe(ocmbTarget);
 
         // If i_allowDisabled isn't true, make sure it's not disabled
@@ -932,20 +930,30 @@ uint32_t queryConfigExistChips(const ecmdChipTarget & i_target, std::list<ecmdCh
           if (pdbg_target_status(ocmbTarget) != PDBG_TARGET_ENABLED)
       	    continue;
         }
-
         // We passed our checks, load up our data
         chipData.chipUnitData.clear();
-        chipData.chipType = "explorer";
-        chipData.chipShortType = "exp";
-
+        
+        if(isOdysseyChip(ocmbTarget))
+        {
+          out.print("deepa: chip type is odyssey\n");
+          chipData.chipType = "odyssey";
+          chipData.chipShortType = "ody";
+        }
+        else
+        {
+          out.print("deepa: chip type is explorer\n");
+          chipData.chipType = "explorer";
+          chipData.chipShortType = "exp";
+        }
         // Getting the seq id of the chip
         // We use FAPI unit position instead of Chip unit position here.
         // DDIMM populated position comes from TARGETING::ATTR_FAPI_POS
-        chipData.pos = getFapiUnitPos(ocmbTarget);
+        chipData.pos = getFapiUnitPos(ocmbTarget); //DB: which attr to look for odyssey
 
+        //TODO: why is i_target.chipUnitTypeState not update for odyssey?
         // If the chipUnitType states are set, see what chipUnitTypes are in this chipType
         if (i_target.chipUnitTypeState == ECMD_TARGET_FIELD_VALID
-          || i_target.chipUnitTypeState == ECMD_TARGET_FIELD_WILDCARD) {
+          || i_target.chipUnitTypeState == ECMD_TARGET_FIELD_WILDCARD || chipData.chipType == "odyssey") {
           // Look for chipunits
           rc = queryConfigExistChipUnits(i_target, ocmbTarget, chipData.chipType, chipData.chipUnitData, i_detail, i_allowDisabled);
           if (rc) return rc;
@@ -964,18 +972,15 @@ uint32_t addChipUnits(const ecmdChipTarget & i_target, struct pdbg_target *i_pTa
   ecmdChipUnitData chipUnitData;
   std::string cuString;
   ecmdChipTarget o_target;
-
-  p10x_convertPDBGClassString_to_CUString(class_name, cuString);
-  if (rc) return rc;
- 
   if (class_name == "explorer")  {
     chipUnitData.chipUnitType = "mp";
     chipUnitData.chipUnitShortType = "mp";
     chipUnitData.chipUnitNum = 0;
     o_chipUnitData.push_back(chipUnitData);
   } else {
+    rc = p10x_convertPDBGClassString_to_CUString(class_name, cuString);
     pdbg_for_each_target(class_name.c_str(), i_pTarget, target) {
- 
+
       //If posState is set to VALID, check that our values match
       //If posState is set to WILDCARD, we don't care
       if ((i_target.chipUnitNumState == ECMD_TARGET_FIELD_VALID) &&
@@ -1006,9 +1011,9 @@ uint32_t addChipUnits(const ecmdChipTarget & i_target, struct pdbg_target *i_pTa
       uint32_t chipUnitNum = getChipUnitPos(target);
       if (pdbg_target_index(target) >= 0) {
         chipUnitData.threadData.clear();
-        chipUnitData.chipUnitType = cuString;
+        chipUnitData.chipUnitType = cuString; 
         chipUnitData.chipUnitNum = chipUnitNum;
-        chipUnitData.numThreads = 4;
+        chipUnitData.numThreads = 4; 
       }
     
       // If the thread states are set, see what thread are in this chipUnit
@@ -1024,13 +1029,68 @@ uint32_t addChipUnits(const ecmdChipTarget & i_target, struct pdbg_target *i_pTa
   return rc;
 }
 
+uint32_t addOdysseyChipUnits(const ecmdChipTarget & i_target, struct pdbg_target *i_pTarget, std::string class_name, std::list<ecmdChipUnitData> & o_chipUnitData, ecmdQueryDetail_t i_detail, bool i_allowDisabled)
+{
+  uint32_t rc = ECMD_SUCCESS;
+  ecmdChipUnitData chipUnitData;
+  struct pdbg_target *target;
+  std::string cuString;
+  ecmdChipTarget o_target;
+
+  rc = odyssey_convertPDBGClassString_to_CUString(class_name, cuString);
+  pdbg_for_each_target(class_name.c_str(), i_pTarget, target) {
+    //If posState is set to VALID, check that our values match
+    //If posState is set to WILDCARD, we don't care
+    if ((i_target.chipUnitNumState == ECMD_TARGET_FIELD_VALID) &&
+      (pdbg_target_index(target) != i_target.chipUnitNum))
+      continue;
+    if ((i_target.chipUnitTypeState == ECMD_TARGET_FIELD_VALID) &&
+      (cuString != i_target.chipUnitType))
+      continue;
+    // Check for the next target, if the current one is 
+    // not functional and we do not allow disabled
+    if (!i_allowDisabled  && !isFunctionalTarget(target))
+    {
+      continue;
+    }
+    //probe only the functional targets 
+    pdbg_target_probe(target);
+    //A target could be functional and disabled. The disabled targets shall 
+    // NOT be scommed.
+    if(pdbg_target_status(target) != PDBG_TARGET_ENABLED)
+    {
+      continue;
+    }
+    uint32_t chipUnitNum = getChipUnitPos(target);
+    if (pdbg_target_index(target) >= 0) {
+      chipUnitData.threadData.clear();
+      chipUnitData.chipUnitType = cuString; 
+      chipUnitData.chipUnitNum = chipUnitNum;
+      chipUnitData.numThreads = 4; 
+    }
+  
+    // If the thread states are set, see what thread are in this chipUnit
+    if (i_target.threadState == ECMD_TARGET_FIELD_VALID
+      || i_target.threadState == ECMD_TARGET_FIELD_WILDCARD) {
+      // Look for chipunits
+      rc = queryConfigExistThreads(i_target, target, chipUnitData.threadData, i_detail, i_allowDisabled);
+      if (rc) return rc;
+    }
+    o_chipUnitData.push_back(chipUnitData);
+  }
+  /*chipUnitData.chipUnitType = "mp";
+  chipUnitData.chipUnitShortType = "mp";
+  chipUnitData.chipUnitNum = 0;*/
+  o_chipUnitData.push_back(chipUnitData);
+  return rc;
+}
+
 uint32_t queryConfigExistChipUnits(const ecmdChipTarget & i_target, struct pdbg_target * i_pTarget, std::string class_type, std::list<ecmdChipUnitData> & o_chipUnitData, ecmdQueryDetail_t i_detail, bool i_allowDisabled)  {
 
   uint32_t rc = ECMD_SUCCESS;
   ecmdChipUnitData chipUnitData;
   struct pdbg_target *target;
   uint32_t l_index;
-
   if(pdbg_get_proc() == PDBG_PROC_P10)
   {
       for (l_index = 0;
@@ -1055,6 +1115,26 @@ uint32_t queryConfigExistChipUnits(const ecmdChipTarget & i_target, struct pdbg_
                             o_chipUnitData, i_detail, i_allowDisabled);
           if (rc) {
               return out.error(EDBG_GENERAL_ERROR, FUNCNAME, "Failed to add ocmb chip unit\n");
+          }
+      }      
+      if(class_type == "odyssey")
+      {
+        for (l_index = 0;
+          l_index < (sizeof(OdysseyChipUnitTable) / sizeof(odyssey_chipUnit_t));
+          l_index++)
+          {
+            cout << "deepa: queryConfigExistChipUnits odyssey\n";
+            // If pdbg class type is pib , don't add the chip unit to the
+            // queryConfigExistChipUnits
+            if (OdysseyChipUnitTable[l_index].pdbgClassType != "pib") {
+                rc = addOdysseyChipUnits(i_target, i_pTarget, OdysseyChipUnitTable[l_index].pdbgClassType, 
+                                  o_chipUnitData, i_detail, i_allowDisabled);
+                cout << "deepa: queryConfigExistChipUnits odyssey :::: " << OdysseyChipUnitTable[l_index].pdbgClassType << endl;
+                if (rc) {
+                    out.error(EDBG_GENERAL_ERROR, FUNCNAME, "Failed to add chip unit:%s\n",
+                              OdysseyChipUnitTable[l_index].pdbgClassType.c_str());
+                }
+            }
           }
       }
   }

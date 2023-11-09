@@ -35,6 +35,8 @@ extern "C" {
 #include <p10_scominfo.H>
 
 #include <assert.h>
+#include <iostream>
+using namespace std;
 
 #ifndef ECMD_REMOVE_SCOM_FUNCTIONS
 //convert the enum to string for use in code
@@ -108,6 +110,80 @@ uint32_t p10x_convertPDBGClassString_to_CUString(std::string pdbgClassType, std:
   return rc;
 }
 
+/////////////////////////////////////
+
+uint32_t odyssey_convertCUEnum_to_String(odysseyChipUnits_t i_odysseyCU, std::string &o_chipUnitType)
+{
+  uint32_t rc = ECMD_SUCCESS;
+  uint32_t l_index;
+
+  for (l_index = 0;
+       l_index < (sizeof(OdysseyChipUnitTable) / sizeof(odyssey_chipUnit_t));
+       l_index++)
+  {
+      //Looking for input ekb chip unit in table
+      if (i_odysseyCU == OdysseyChipUnitTable[l_index].ekbChipUnit)
+          break;
+
+  }
+  // Can't find i_odysseyCU in table
+  if (l_index >= (sizeof(OdysseyChipUnitTable) / sizeof(odyssey_chipUnit_t))){
+      return out.error(EDBG_GENERAL_ERROR, FUNCNAME, "Unknown chip unit enum:%d\n", i_odysseyCU);
+  }
+  o_chipUnitType = OdysseyChipUnitTable[l_index].chipUnitType;
+  return rc;
+}
+
+//convert chipunit string to pdbg class type, as pdbg does not accept ecmd strings
+uint32_t odyssey_convertCUString_to_pdbgClassString(std::string cuString, std::string &o_pdbgClassType)
+{
+  uint32_t rc = ECMD_SUCCESS;
+  uint32_t l_index;
+
+  for (l_index = 0;
+       l_index < (sizeof(OdysseyChipUnitTable) / sizeof(odyssey_chipUnit_t));
+       l_index++)
+  {
+      //Looking for input chip unit type in table
+      if (cuString == OdysseyChipUnitTable[l_index].chipUnitType)
+          break;
+
+  }
+  // Can't find cuString in table
+  if (l_index >= (sizeof(OdysseyChipUnitTable) / sizeof(odyssey_chipUnit_t))){
+      return out.error(EDBG_GENERAL_ERROR, FUNCNAME, "Unknown chip unit:%S\n", cuString.c_str());
+  }
+
+  o_pdbgClassType = OdysseyChipUnitTable[l_index].pdbgClassType;
+  return rc;
+}
+
+//convert chipunit string to pdbg class type, as pdbg does not accept ecmd strings
+uint32_t odyssey_convertPDBGClassString_to_CUString(std::string pdbgClassType, std::string &o_chipUnitType) {
+
+  uint32_t rc = ECMD_SUCCESS;
+  uint32_t l_index;
+
+  for (l_index = 0;
+       l_index < (sizeof(OdysseyChipUnitTable) / sizeof(odyssey_chipUnit_t));
+       l_index++)
+  {
+      //Looking for input chip unit type in table
+      if (pdbgClassType == OdysseyChipUnitTable[l_index].pdbgClassType)
+          break;
+
+  }
+  // Can't find pdbgClassType in table
+  if (l_index >= (sizeof(OdysseyChipUnitTable) / sizeof(odyssey_chipUnit_t))){
+      return  out.error(EDBG_GENERAL_ERROR, FUNCNAME, "Unknown pdbg class unit:%s\n", pdbgClassType.c_str());
+  }
+
+  o_chipUnitType = OdysseyChipUnitTable[l_index].chipUnitType;
+  return rc;
+}
+
+////////////////////////////////////
+
 uint32_t p10_dllQueryScom(const ecmdChipTarget & i_target, std::list<ecmdScomData> & o_queryData, uint64_t i_address, ecmdQueryDetail_t i_detail) {
   uint32_t rc = ECMD_SUCCESS;
   ecmdScomData sdReturn;
@@ -123,6 +199,7 @@ uint32_t p10_dllQueryScom(const ecmdChipTarget & i_target, std::list<ecmdScomDat
       if (rc != ECMD_SUCCESS) {
           return out.error(rc, FUNCNAME,  "dllGetChipData() returned error");
       }
+
 
       //sdReturn.address = i_address;
       //sdReturn.length = 64;
@@ -152,6 +229,7 @@ uint32_t p10_dllQueryScom(const ecmdChipTarget & i_target, std::list<ecmdScomDat
           cuPairingIter++;
         }
       }
+      sdReturn.address = i_address;
   } else if (  (i_target.chipType == "explorer") ||
                (i_target.chipType == "exp")||
                (i_target.chipType == "ocmb") ) {
@@ -160,9 +238,62 @@ uint32_t p10_dllQueryScom(const ecmdChipTarget & i_target, std::list<ecmdScomDat
     sdReturn.isChipUnitRelated = true;
     sdReturn.relatedChipUnit.push_back("mp");
     sdReturn.relatedChipUnitShort.push_back("mp");
-  } //End chip type check
 
-  sdReturn.address = i_address;
+    sdReturn.address = i_address;
+
+    
+  } 
+  else if ( (i_target.chipType == "odyssey") ||
+               (i_target.chipType == "ody") )
+               {
+cout << "DB:Chumma 11111111111111111111111:::::::::::::::::::\n";                
+
+                odysseyChipUnits_t chipUnitType = ODYSSEY_MEMPORT_CHIPUNIT; //TODO: DB: fetch the actual type?
+                uint8_t i_ecLevel = 0; //not used in odyssey
+cout << "DB:Chumma 222222222222222222222:::::::::::::::::::\n";
+sdReturn.isChipUnitRelated = false;
+      sdReturn.endianMode = ECMD_BIG_ENDIAN;
+      std::vector<odyssey_chipUnitPairing_t> l_chipUnitPairing;
+      sdReturn.relatedChipUnit.clear();
+      sdReturn.relatedChipUnitShort.clear();
+cout << "DB:Chumma 333333333333333333333333333333:::::::::::::::::::\n";
+rc = odyssey_scominfo_isChipUnitScom(chipUnitType, i_ecLevel, i_address, sdReturn.isChipUnitRelated, l_chipUnitPairing);
+cout << "DB:Chumma 444444444444444:::::::::::::::::::\n";
+if (sdReturn.isChipUnitRelated) {
+cout << "DB:Chumma 55555555555555555:::::::::::::::::::\n";    
+        std::vector<odyssey_chipUnitPairing_t>::const_iterator cuPairingIter = l_chipUnitPairing.begin();
+
+        while(cuPairingIter != l_chipUnitPairing.end()) {
+cout << "DB:Chumma 666666666666666:::::::::::::::::::\n";            
+          std::string l_chipUnitType;
+          rc = odyssey_convertCUEnum_to_String(cuPairingIter->chipUnitType, l_chipUnitType);
+          if (rc) return rc;
+          sdReturn.isChipUnitRelated = true;
+cout << "DB:Chumma 666666666666666.111111111111111111:::::::::::::::::::\n";     
+cout << "DB:Chumma l_chipUnitType :: " << l_chipUnitType << endl;      
+          sdReturn.relatedChipUnit.push_back(l_chipUnitType);
+          sdReturn.relatedChipUnitShort.push_back(l_chipUnitType);
+          cuPairingIter++;
+        }
+      }
+
+    if (rc) 
+    {
+cout << "DB:Chumma 7777777777777777777777777:::::::::::::::::::\n";        
+        return out.error(rc, FUNCNAME,"Invalid scom addr via scom address lookup via p10_scominfo_isChipUnitScom failed\n");
+    }
+cout << "DB:Chumma 8888888888888888888888888888:::::::::::::::::::\n";    
+    uint8_t i_chipUnitNum = 0; 
+    sdReturn.address = odyssey_scominfo_createChipUnitScomAddr(chipUnitType,
+            i_ecLevel,
+            i_chipUnitNum,
+            i_address); 
+
+}
+
+//End chip type check
+
+  
   sdReturn.length = 64;
   o_queryData.push_back(sdReturn);
 
@@ -176,17 +307,16 @@ uint32_t p10_dllGetScom(const ecmdChipTarget & i_target, uint64_t i_address, ecm
   struct pdbg_target *addr_base;
   std::string pdbgClassString;
 
-  if(i_target.chipType == "explorer")
+  if(i_target.chipType == "explorer" || i_target.chipType == "odyssey")
   {
+    cout << "deepa: p10_dllGetScom\n";
       pdbg_for_each_class_target("ocmb", ocmb) {
-   
           if (getFapiUnitPos(ocmb) != i_target.pos)
               continue;
-
           // Make sure the pdbg target probe has been done and get the target state
           if (pdbg_target_probe(ocmb) != PDBG_TARGET_ENABLED)
               continue;
-          
+    cout << "deepa: calling ocmb_getscom\n";           
           rc = ocmb_getscom(ocmb, i_address, &data);
           if (rc) {
               return out.error(EDBG_READ_ERROR, FUNCNAME,
@@ -231,6 +361,7 @@ uint32_t p10_dllGetScom(const ecmdChipTarget & i_target, uint64_t i_address, ecm
           }
 
           // Do the read and store the data in the return buffer
+          cout << "deepa: pib_read\n";
           rc = pib_read(target, i_address, &data);
           if (rc) {
               return out.error(EDBG_READ_ERROR, FUNCNAME,
