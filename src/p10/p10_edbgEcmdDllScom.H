@@ -23,6 +23,7 @@
 #define p10_edbgEcmdDllScom_H
 
 #include <p10_scominfo.H>
+#include <odyssey_scominfo.H>
 
 struct p10_chipUnit_t{
         p10ChipUnits_t ekbChipUnit;
@@ -55,6 +56,22 @@ const p10_chipUnit_t ChipUnitTable[] =
         { P10_NO_CU,        "smpgroup", "smpgroup"}, //Not a scommable target. leaving it NO_CU
 };
 
+
+struct odyssey_chipUnit_t{
+        odysseyChipUnits_t ekbChipUnit;
+	std::string chipUnitType;
+        std::string pdbgClassType;
+};
+
+//mapping table for ekb, ecmd and pdbg
+const odyssey_chipUnit_t OdysseyChipUnitTable[] =
+{
+        { ODYSSEY_NO_CU, "", "" }, //TODO: DB: Is it correct
+        { ODYSSEY_PERV_CHIPUNIT, "perv", "chiplet" },
+        { ODYSSEY_MEMPORT_CHIPUNIT, "mp",   "mem_port" },
+        { ODYSSEY_OMI_CHIPUNIT, "omi",  "omi"  },
+};
+
 uint32_t p10_dllQueryScom(const ecmdChipTarget & i_target, std::list<ecmdScomData> & o_queryData, uint64_t i_address, ecmdQueryDetail_t i_detail);
 
 uint32_t p10_dllGetScom(const ecmdChipTarget & i_target, uint64_t i_address, ecmdDataBuffer & o_data);
@@ -64,5 +81,7 @@ uint32_t p10_dllPutScom(const ecmdChipTarget & i_target, uint64_t i_address, con
 uint32_t p10_dllPutScomUnderMask(const ecmdChipTarget & i_target, uint64_t i_address, const ecmdDataBuffer & i_data, const ecmdDataBuffer & i_mask);
 
 uint32_t p10x_convertPDBGClassString_to_CUString(std::string pdbgClassType, std::string &o_chipUnitType);
+
+uint32_t odyssey_convertPDBGClassString_to_CUString(std::string pdbgClassType, std::string &o_chipUnitType);
 
 #endif
