@@ -940,8 +940,17 @@ uint32_t queryConfigExistChips(const ecmdChipTarget &i_target,
   // Within the proc/memory chip, sort them by position.
   // To keep in sync with lab and cronus users, order and display
   // the memory chips by FAPI_POS.
-  pdbg_for_each_class_target("proc", chipTarget) {
+    const char* processor_class_name;
+    std::string expectedChipType;
+    if (pdbg_get_proc() == PDBG_PROC_PST) {
+      expectedChipType = ECMD_CHIPT_PROC_HUB;
+      processor_class_name = "hubchip";
+    } else {
+      expectedChipType = ECMD_CHIPT_PROCESSOR;
+      processor_class_name = "proc";
+    }
 
+    pdbg_for_each_class_target(processor_class_name, chipTarget) {
     // If posState is set to VALID, check that our values match
     // If posState is set to WILDCARD, we don't care
     if ((pdbg_target_index(chipTarget) < 0) ||
@@ -949,8 +958,8 @@ uint32_t queryConfigExistChips(const ecmdChipTarget &i_target,
          (pdbg_target_index(chipTarget) != i_target.pos)))
       continue;
 
-    // if chip type is not pu then, skip adding.
-    if ((i_target.chipType != ECMD_CHIPT_PROCESSOR) &&
+    // if chip type is not pu or ph or wildcard then, skip adding.
+    if (i_target.chipType != expectedChipType &&
         (i_target.chipTypeState != ECMD_TARGET_FIELD_WILDCARD))
       continue;
 
@@ -960,9 +969,8 @@ uint32_t queryConfigExistChips(const ecmdChipTarget &i_target,
     // if(!isFunctionalTarget(chipTarget))
     //    continue;
 
-    sprintf(pib_path, "/%s%d/%s", "proc", pdbg_target_index(chipTarget), "pib");
+    pibTarget = pdbg_get_backend_target(chipTarget, "pib");
 
-    pibTarget = pdbg_target_from_path(NULL, pib_path);
     if (!pibTarget)
       continue;
 
@@ -977,7 +985,14 @@ uint32_t queryConfigExistChips(const ecmdChipTarget &i_target,
 
     // We passed our checks, load up our data
     chipData.chipUnitData.clear();
-    chipData.chipType = "pu";
+    if(pdbg_get_proc() == PDBG_PROC_PST)
+    {
+      chipData.chipType = ECMD_CHIPT_PROC_HUB;
+    }
+    else
+    {
+      chipData.chipType = ECMD_CHIPT_PROCESSOR;
+    }
     chipData.chipShortType = i_target.chipUnitType;
     chipData.pos = pdbg_target_index(chipTarget);
 
@@ -1190,8 +1205,11 @@ uint32_t queryConfigExistChipUnits(const ecmdChipTarget &i_target,
   ecmdChipUnitData chipUnitData;
   struct pdbg_target *target;
   uint32_t l_index;
-  if (pdbg_get_proc() == PDBG_PROC_P10) {
-    if (class_type == "pu") {
+  //TODO:PST - In the future this needs to have chipunit table for p12
+  //and traverse through that list
+  if (pdbg_get_proc() == PDBG_PROC_P10 || pdbg_get_proc() == PDBG_PROC_PST) {
+    if (class_type == ECMD_CHIPT_PROCESSOR || 
+      class_type == ECMD_CHIPT_PROC_HUB) {
       for (l_index = 0;
            l_index < (sizeof(ChipUnitTable) / sizeof(p10_chipUnit_t));
            l_index++) {
@@ -1456,6 +1474,10 @@ std::string getChipType() {
     l_chipType = "p10";
     break;
 
+  case PDBG_PROC_PST:
+    l_chipType = "pst";
+    break;
+
   default:
     l_chipType = "Unknown";
     break;
@@ -1466,14 +1488,24 @@ std::string getChipType() {
 uint32_t dllGetChipData(const ecmdChipTarget &i_target, ecmdChipData &o_data) {
   uint32_t rc = ECMD_SUCCESS;
 
-  if (pdbg_get_proc() == PDBG_PROC_P10) {
+  if (pdbg_get_proc() == PDBG_PROC_P10 || pdbg_get_proc() == PDBG_PROC_PST) {
     ecmdChipData chipData;
     struct pdbg_target *chipTarget;
     uint32_t index;
 
     // chipEC is 0 if we fail to read via attribute
     uint8_t chipEC = 0;
-    pdbg_for_each_class_target("proc", chipTarget) {
+    const char* processor_class_name;
+    std::string expectedChipType;
+    if (pdbg_get_proc() == PDBG_PROC_PST) {
+      expectedChipType = ECMD_CHIPT_PROC_HUB;
+      processor_class_name = "hubchip";
+    } else {
+      expectedChipType = ECMD_CHIPT_PROCESSOR;
+      processor_class_name = "proc";
+    }
+
+    pdbg_for_each_class_target(processor_class_name, chipTarget) {
 
       index = pdbg_target_index(chipTarget);
 
@@ -1487,7 +1519,7 @@ uint32_t dllGetChipData(const ecmdChipTarget &i_target, ecmdChipData &o_data) {
       chipData.chipUnitData.clear();
       chipData.chipType = getChipType();
       chipData.chipShortType = getChipType();
-      chipData.chipCommonType = ECMD_CHIPT_PROCESSOR;
+      chipData.chipCommonType = expectedChipType;
       chipData.pos = index;
 
       // TARGETING::ATTR_EC
