@@ -115,6 +115,11 @@ uint32_t queryConfigExistThreads(const ecmdChipTarget &i_target,
 
 std::string gEDBG_HOME;
 
+// ToDo: pst
+#define pst_bringup_testing()                                                  \
+  system("cp /usr/share/pdata/pst_fake.dtb "                                   \
+         "/var/lib/phosphor-software-manager/hostfw/running/DEVTREE");
+
 /* #################################################################################################
  */
 /* Static functions used to lookup pdbg targets
@@ -281,7 +286,11 @@ void setPhalLogLevel() {
 
 // Load the device tree and initialise the targets
 static int initTargets(void) {
-
+  // ToDo: pst
+  int ret = pst_bringup_testing();
+  if (ret == -1) {
+    ecmdOutputError("can't copy dtb\n");
+  }
   // If set to 'none', skip the rest of what we do to setup the device tree
   // This is assuming we won't be using any functions that use the device tree
   if (!strcmp(getenv("PDBG_DTB"), "none")) {
