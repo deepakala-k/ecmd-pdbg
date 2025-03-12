@@ -5,45 +5,68 @@ Based on P10_IPL_Flow_v0.93.00 of IPL Flow document
 
 StepName                                  Num   Description
 -------------------------------------------------------------------------------------------------------------
-poweron                                   0     Power on system, enable soft switches
-startipl                                  0     Start IPL on FSP
-disableattns                              0     Disable Attentions
-updatehwmodel                             0     Update the HWServer Model
-alignment_check                           0     Check boot reqs for FSP
-set_ref_clock                             0     Set the Processor ref clock
-proc_clock_test                           0     Check reference clock validity
-proc_prep_ipl                             0     Clear all pending mbox messages; set all GP regs to default
-edramrepair                               0     Noop
-asset_protection                          0     Asset Protection
-proc_select_boot_prom                     0     Select the boot SEEPROM/OTPROM
-hb_config_update                          0     HB config update
-sbe_config_update                         0     Customize SEEPROM image via xip_customize; setup mbox
-sbe_start                                 0     Start primary SBE
-startprd                                  0     Build diagnostics model
-proc_attn_listen                          0     Enable attn interrupts for primary processor
+pre_cfam_reset                            0     Clean up CFAM logic prior to reset
+cfam_reset                                0     Issue CFAM Reset to all Spinal hubs
+poweron                                   0     Power on System
+startipl                                  0     Start IPL
+disable_attns                             0     Disable Attentions
+updatehwmodel                             0     Adjust Host HW model for IPL
+smp_topology                              0     Determine sled SMP topology and deconfig
+boot_optimization_check                   0     Pick the right HW / BMC for redundancy
+set_ref_clock                             0     Adjust reference clock frequencies
+clock_test                                0     Test to see if the ref clock is valid
+hb_config_update                          0     Update Hostboot config data area with any configs/parameters
+ph_sppe_config_update                     0     Customize SEEPROM image
+cbs_start                                 0     Start tap CBS engine
+startPRD                                  0     Build diagnostics model
+proc_attn_listen                          0     Enable attention interrupts
 
-proc_sbe_enable_seeprom                   1     Select SEEPROM address
-proc_sbe_pib_init                         1     PIB initialization
-proc_sbe_measure                          1     Does the TPM init and initial extend
+ph_enable_seeprom                         1     Select SEEPROM address
+ph_tp_chiplet_reset                       1     Resets/enables pervasive chiplet
+ph_tp_pll_initf                           1     Loads PLL buckets based on scratch regs
+ph_tp_pll_setup                           1     Sets up all filter PLLs on chip first
+ph_pib_repr_initf                         1     Loads PIBMEM repairs
+ph_pib_arrayinit                          1     Start and poll array engine for PIB
+ph_pib_arrayinit_cleanup                  1     Cleanup from PIB arrayinit
+ph_pib_lbist                              1     istep Hook for DFT lbist
+ph_pib_startclocks                        1     Start the pib clocks
+ph_sppe_boot                              1     Load, measurement and secureboot of SPPE bootloader
+ph_sppe_check_for_ready                   1     Poll the SPPE booted
+ph_sppe_update                            1     If SPPE cannot boot or is at a mismatched level, the BMC will attempt to update the SPPE image
+ph_sppe_attr_setup                        1     Setup SBE multi-pipe for Spinal
+ph_sppe_attr_override                     1     Send ATTR override pak file to SPPE
+ph_rcs_setup                              1     Initialize the RCS
+ph_tp_repr_initf                          1     Load Scan Repair for TP Chiplet
+ph_tp_arrayinit                           1     Run arrayinit on TP chiplet
+ph_tp_arrayinit_cleanup                   1     Run arrayinit cleanup on TP chiplet
+ph_tp_initf                               1     Apply scan overrides to TP Chiplet
+ph_tp_startclocks                         1     Start TP pervasive, PCB and OCC
+ph_tp_init                                1     Initialize TP chiplet
 
-proc_sbe_ld_image                         2     Load PIBMEM image
-proc_sbe_attr_setup                       2     Read scratch regs, update ATTR
-proc_sbe_tp_dpll_bypass                   2     Reset the TP clock to bypass
-proc_sbe_tp_chiplet_reset                 2     TP Chiplet reset
-proc_sbe_tp_gptr_time_initf               2     Init Perv GPTR/Time
-proc_sbe_dft_probe_setup_1                2     Setup DFT probe points
-proc_sbe_npll_initf                       2     Program Powerbus PLL
-proc_sbe_rcs_setup                        2     Initialize RCS
-proc_sbe_tp_switch_gears                  2     Update SBE I2C config
-proc_sbe_npll_setup                       2     Nest PLL setup
-proc_sbe_tp_repr_initf                    2     TP Chiplet Repair
-proc_sbe_setup_tp_abist                   2     Hook for DFT to run abist on TP
-proc_sbe_tp_arrayinit                     2     TP Chiplet array init
-proc_sbe_tp_initf                         2     TP Chiplet scan inits
-proc_sbe_dft_probesetup_2                 2     Setup DFT probe points
-proc_sbe_tp_chiplet_init                  2     TP Chiplet Start clocks
+ph_fsi_init                               2     Initialize fsi
+pc_fsi_config                             2     Configure Tap root controls and scratch
+pc_cbs_start                              2     Start all Tap's CBS engine
+pc_tp_chiplet_reset                       2     Reset Tap pervasive chiplet
+pc_tp_repr_initf                          2     load Tap repair rings
+pc_tp_arrayinit_start                     2     Start abist on all Taps
+pc_tp_arrayinit_poll                      2     Poll for abist complete on all Taps
+pc_tp_arrayinit_cleanup                   2     Any cleanup needed after abist on all Taps
+pc_tp_lbist                               2     Start lbist on all TAP pervasive
+pc_pib_startclocks                        2     Start the pib clocks on all Taps
+ph_pc_sbe_load_code_pak                   2     SPPE will load the SBE pack images
+ph_pc_sbe_load_cust_pak                   2     SPPE will load unique SBE pack images for each chip
+pc_sbe_config_update                      2     Setup the scratch registers on the Tap chip
+ph_pc_sbe_start                           2     Start the SBEs on both Spinal and TAP in parallel
+ph_pc_sbe_check_for_ready                 2     Poll the SBEs booted
+ph_pc_sbe_attr_setup                      2     Setup SBE multi-pipe for TAP
+ph_pc_sbe_attr_override                   2     Update the SBE in memory ATTR tanks
+pc_pll_initf                              2     Load the TAP DPLL settings scan inits
+pc_pll_setup                              2     Init the TAP DPLLs
+pc_tp_initf                               2     Load the pervasive initfiles
+pc_tp_startclocks                         2     Start the TAP pervasive clocks
+pc_tp_init                                2     Perform any inits for pervasive domain
 
-proc_sbe_chiplet_setup                    3     Nest Chiplet Setup
+ph_pc_chiplet_clk_config                  3     Setup the downstream (wrt ref clock) clock mux for all chiplets
 proc_sbe_chiplet_clk_config               3     Setup the chiplet clock muxing
 proc_sbe_chiplet_reset                    3     Nest Chiplet Reset
 proc_sbe_gptr_time_initf                  3     Init GPTR, Time rings for chiplets

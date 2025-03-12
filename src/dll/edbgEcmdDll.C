@@ -289,7 +289,7 @@ static int initTargets(void) {
   // ToDo: pst
   int ret = pst_bringup_testing();
   if (ret == -1) {
-    ecmdOutputError("can't copy dtb\n");
+    dllOutputError("can't copy dtb\n");
   }
   // If set to 'none', skip the rest of what we do to setup the device tree
   // This is assuming we won't be using any functions that use the device tree
