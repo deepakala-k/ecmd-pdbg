@@ -31,81 +31,82 @@ extern "C" {
 // Headers from ecmd-pdbg
 #include <edbgCommon.H>
 #include <edbgOutput.H>
-#include <p10_edbgEcmdDllScom.H>
-#include <p10_scominfo.H>
+#include <pst_edbgEcmdDllScom.H>
+#include <pst_scominfo.H>
+#include <ps_scominfo.H>
 
 #include <assert.h>
 
 #ifndef ECMD_REMOVE_SCOM_FUNCTIONS
 // convert the enum to string for use in code
-uint32_t p10x_convertCUEnum_to_String(p10ChipUnits_t i_P10CU,
+uint32_t pst_convertCUEnum_to_String(pstChipUnits_t i_pstCU,
                                       std::string &o_chipUnitType) {
   uint32_t rc = ECMD_SUCCESS;
   uint32_t l_index;
 
-  for (l_index = 0; l_index < (sizeof(ChipUnitTable) / sizeof(p10_chipUnit_t));
+  for (l_index = 0; l_index < (sizeof(PST_ChipUnitTable) / sizeof(pst_chipUnit_t));
        l_index++) {
     // Looking for input ekb chip unit in table
-    if (i_P10CU == ChipUnitTable[l_index].ekbChipUnit)
+    if (i_pstCU == PST_ChipUnitTable[l_index].ekbChipUnit)
       break;
   }
-  // Can't find i_P10CU in table
-  if (l_index >= (sizeof(ChipUnitTable) / sizeof(p10_chipUnit_t))) {
+  // Can't find i_pstCU in table
+  if (l_index >= (sizeof(PST_ChipUnitTable) / sizeof(pst_chipUnit_t))) {
     return out.error(EDBG_GENERAL_ERROR, FUNCNAME,
-                     "Unknown chip unit enum:%d\n", i_P10CU);
+                     "Unknown chip unit enum:%d\n", i_pstCU);
   }
-  o_chipUnitType = ChipUnitTable[l_index].chipUnitType;
+  o_chipUnitType = PST_ChipUnitTable[l_index].chipUnitType;
   return rc;
 }
 
 // convert chipunit string to pdbg class type, as pdbg does not accept ecmd
 // strings
-uint32_t p10x_convertCUString_to_pdbgClassString(std::string cuString,
+uint32_t pst_convertCUString_to_pdbgClassString(std::string cuString,
                                                  std::string &o_pdbgClassType) {
   uint32_t rc = ECMD_SUCCESS;
   uint32_t l_index;
 
-  for (l_index = 0; l_index < (sizeof(ChipUnitTable) / sizeof(p10_chipUnit_t));
+  for (l_index = 0; l_index < (sizeof(PST_ChipUnitTable) / sizeof(pst_chipUnit_t));
        l_index++) {
     // Looking for input chip unit type in table
-    if (cuString == ChipUnitTable[l_index].chipUnitType)
+    if (cuString == PST_ChipUnitTable[l_index].chipUnitType)
       break;
   }
   // Can't find cuString in table
-  if (l_index >= (sizeof(ChipUnitTable) / sizeof(p10_chipUnit_t))) {
+  if (l_index >= (sizeof(PST_ChipUnitTable) / sizeof(pst_chipUnit_t))) {
     return out.error(EDBG_GENERAL_ERROR, FUNCNAME, "Unknown chip unit:%S\n",
                      cuString.c_str());
   }
 
-  o_pdbgClassType = ChipUnitTable[l_index].pdbgClassType;
+  o_pdbgClassType = PST_ChipUnitTable[l_index].pdbgClassType;
   return rc;
 }
 
 // convert chipunit string to pdbg class type, as pdbg does not accept ecmd
 // strings
-uint32_t p10x_convertPDBGClassString_to_CUString(std::string pdbgClassType,
+uint32_t pst_convertPDBGClassString_to_CUString(std::string pdbgClassType,
                                                  std::string &o_chipUnitType) {
 
   uint32_t rc = ECMD_SUCCESS;
   uint32_t l_index;
 
-  for (l_index = 0; l_index < (sizeof(ChipUnitTable) / sizeof(p10_chipUnit_t));
+  for (l_index = 0; l_index < (sizeof(PST_ChipUnitTable) / sizeof(pst_chipUnit_t));
        l_index++) {
     // Looking for input chip unit type in table
-    if (pdbgClassType == ChipUnitTable[l_index].pdbgClassType)
+    if (pdbgClassType == PST_ChipUnitTable[l_index].pdbgClassType)
       break;
   }
   // Can't find pdbgClassType in table
-  if (l_index >= (sizeof(ChipUnitTable) / sizeof(p10_chipUnit_t))) {
+  if (l_index >= (sizeof(PST_ChipUnitTable) / sizeof(pst_chipUnit_t))) {
     return out.error(EDBG_GENERAL_ERROR, FUNCNAME,
                      "Unknown pdbg class unit:%s\n", pdbgClassType.c_str());
   }
 
-  o_chipUnitType = ChipUnitTable[l_index].chipUnitType;
+  o_chipUnitType = PST_ChipUnitTable[l_index].chipUnitType;
   return rc;
 }
 
-uint32_t p10_dllQueryScom(const ecmdChipTarget &i_target,
+uint32_t pst_dllQueryScom(const ecmdChipTarget &i_target,
                           std::list<ecmdScomData> &o_queryData,
                           uint64_t i_address, ecmdQueryDetail_t i_detail) {
   uint32_t rc = ECMD_SUCCESS;
@@ -114,8 +115,8 @@ uint32_t p10_dllQueryScom(const ecmdChipTarget &i_target,
   // Wipe out the data structure provided by the user
   o_queryData.clear();
 
-  if ((i_target.chipType == ECMD_CHIPT_PROCESSOR) ||
-      (i_target.chipType == "p10")) {
+  if ((i_target.chipType == ECMD_CHIPT_PROC_HUB) ||
+      (i_target.chipType == "pst")) {
 
     ecmdChipData l_chipData;
     rc = dllGetChipData(i_target, l_chipData);
@@ -125,26 +126,26 @@ uint32_t p10_dllQueryScom(const ecmdChipTarget &i_target,
 
     sdReturn.isChipUnitRelated = false;
     sdReturn.endianMode = ECMD_BIG_ENDIAN;
-    std::vector<p10_chipUnitPairing_t> l_chipUnitPairing;
-    p10ChipUnits_t l_P10CU = P10_NO_CU;
+    std::vector<pst_chipUnitPairing_t> l_chipUnitPairing;
+    pstChipUnits_t l_PSTCU = NO_CU;
     sdReturn.relatedChipUnit.clear();
     sdReturn.relatedChipUnitShort.clear();
 
-    rc = p10_scominfo_isChipUnitScom(
-        l_P10CU, static_cast<uint8_t>(l_chipData.chipEc), i_address,
-        sdReturn.isChipUnitRelated, l_chipUnitPairing, P10_DEFAULT_MODE);
+    rc = ps_scominfo_isChipUnitScom(
+        l_PSTCU, static_cast<uint8_t>(l_chipData.chipEc), i_address,
+        sdReturn.isChipUnitRelated, l_chipUnitPairing, DEFAULT_MODE);
     if (rc) {
       return out.error(rc, FUNCNAME,
                        "Invalid scom addr via scom address lookup via "
-                       "p10_scominfo_isChipUnitScom failed\n");
+                       "ps_scominfo_isChipUnitScom failed\n");
     }
     if (sdReturn.isChipUnitRelated) {
-      std::vector<p10_chipUnitPairing_t>::const_iterator cuPairingIter =
+      std::vector<pst_chipUnitPairing_t>::const_iterator cuPairingIter =
           l_chipUnitPairing.begin();
 
       while (cuPairingIter != l_chipUnitPairing.end()) {
         std::string l_chipUnitType;
-        rc = p10x_convertCUEnum_to_String(cuPairingIter->chipUnitType,
+        rc = pst_convertCUEnum_to_String(cuPairingIter->chipUnitType,
                                           l_chipUnitType);
         if (rc)
           return rc;
@@ -203,7 +204,7 @@ uint32_t p10_dllQueryScom(const ecmdChipTarget &i_target,
     if (rc) {
       return out.error(rc, FUNCNAME,
                        "Invalid scom addr via scom address lookup via "
-                       "p10_scominfo_isChipUnitScom failed\n");
+                       "ps_scominfo_isChipUnitScom failed\n");
     }
   }
 
@@ -214,12 +215,12 @@ uint32_t p10_dllQueryScom(const ecmdChipTarget &i_target,
   return rc;
 }
 
-uint32_t p10_dllGetScom(const ecmdChipTarget &input_target, uint64_t i_address,
+uint32_t pst_dllGetScom(const ecmdChipTarget &input_target, uint64_t i_address,
                         ecmdDataBuffer &o_data) {
   ecmdChipTarget i_target = input_target;
   uint32_t rc = ECMD_SUCCESS;
   uint64_t data = 0;
-  struct pdbg_target *target, *proc, *ocmb;
+  struct pdbg_target *target, *hubchipTarget, *ocmb;
   struct pdbg_target *addr_base;
   std::string pdbgClassString;
   if (i_target.chipType == "odyssey") {
@@ -278,25 +279,22 @@ uint32_t p10_dllGetScom(const ecmdChipTarget &input_target, uint64_t i_address,
                          i_address, data, pdbg_target_path(ocmb), rc);
       }
     }
-  } else if (i_target.chipType == ECMD_CHIPT_PROCESSOR) {
-    rc = p10x_convertCUString_to_pdbgClassString(i_target.chipUnitType,
+  } else if (i_target.chipType == ECMD_CHIPT_PROC_HUB) {
+    rc = pst_convertCUString_to_pdbgClassString(i_target.chipUnitType,
                                                  pdbgClassString);
     if (rc) {
       return out.error(EDBG_GENERAL_ERROR, FUNCNAME,
                        "Matching pdbg class string not found!");
     }
 
-    char path[16];
-    sprintf(path, "/proc%d", i_target.pos);
-    proc = pdbg_target_from_path(NULL, path);
-
-    // bail out if give proc position not available.
-    if (proc == NULL) {
-      return out.error(ECMD_TARGET_NOT_CONFIGURED, FUNCNAME,
-                       "target not configured!\n");
+    const char* processor_class_name = "hubchip";
+    
+    pdbg_for_each_class_target(processor_class_name, hubchipTarget) {
+      if (pdbg_target_index(hubchipTarget) == i_target.pos)
+        break;
     }
 
-    pdbg_for_each_target(pdbgClassString.c_str(), proc, target) {
+    pdbg_for_each_target(pdbgClassString.c_str(), hubchipTarget, target) {
 
       // for "pu" there is no matching required with chip unit number
       if (i_target.chipUnitType != "") {
@@ -334,7 +332,7 @@ uint32_t p10_dllGetScom(const ecmdChipTarget &input_target, uint64_t i_address,
   return rc;
 }
 
-uint32_t p10_dllPutScom(const ecmdChipTarget &i_target, uint64_t i_address,
+uint32_t pst_dllPutScom(const ecmdChipTarget &i_target, uint64_t i_address,
                         const ecmdDataBuffer &i_data) {
   uint32_t rc = ECMD_SUCCESS;
   struct pdbg_target *target, *proc, *ocmb;
@@ -405,7 +403,7 @@ uint32_t p10_dllPutScom(const ecmdChipTarget &i_target, uint64_t i_address,
       }
     }
   } else if (i_target.chipType == ECMD_CHIPT_PROCESSOR) {
-    rc = p10x_convertCUString_to_pdbgClassString(i_target.chipUnitType,
+    rc = pst_convertCUString_to_pdbgClassString(i_target.chipUnitType,
                                                  pdbgClassString);
     if (rc) {
       return out.error(EDBG_GENERAL_ERROR, FUNCNAME,
@@ -456,7 +454,7 @@ uint32_t p10_dllPutScom(const ecmdChipTarget &i_target, uint64_t i_address,
   return rc;
 }
 
-uint32_t p10_dllPutScomUnderMask(const ecmdChipTarget &i_target,
+uint32_t pst_dllPutScomUnderMask(const ecmdChipTarget &i_target,
                                  uint64_t i_address,
                                  const ecmdDataBuffer &i_data,
                                  const ecmdDataBuffer &i_mask) {
@@ -467,7 +465,7 @@ uint32_t p10_dllPutScomUnderMask(const ecmdChipTarget &i_target,
   std::string pdbgClassString;
 
   if (i_target.chipType == ECMD_CHIPT_PROCESSOR) {
-    rc = p10x_convertCUString_to_pdbgClassString(i_target.chipUnitType,
+    rc = pst_convertCUString_to_pdbgClassString(i_target.chipUnitType,
                                                  pdbgClassString);
     if (rc) {
       return out.error(EDBG_GENERAL_ERROR, FUNCNAME,
@@ -520,7 +518,7 @@ uint32_t p10_dllPutScomUnderMask(const ecmdChipTarget &i_target,
   return rc;
 }
 
-uint32_t p10_dllDoScomMultiple(const ecmdChipTarget &i_target,
+uint32_t pst_dllDoScomMultiple(const ecmdChipTarget &i_target,
                                std::list<ecmdScomEntry> &io_entries) {
   return ECMD_FUNCTION_NOT_SUPPORTED;
 }

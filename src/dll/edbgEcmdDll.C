@@ -67,6 +67,9 @@ extern "C" {
 #include <p10_edbgEcmdDllScom.H>
 #include <p9_edbgEcmdDllScom.H>
 
+#include <pst_edbgEcmdDllScom.H>
+#include <odyssey_edbgEcmdDllScom.H>
+
 // Header from spr generic function
 #include <ecmdMapSpr2Str.H>
 
@@ -1589,6 +1592,8 @@ uint32_t dllQueryScom(const ecmdChipTarget &i_target,
     rc = p9_dllQueryScom(i_target, o_queryData, i_address, i_detail);
   } else if (pdbg_get_proc() == PDBG_PROC_P10) {
     rc = p10_dllQueryScom(i_target, o_queryData, i_address, i_detail);
+  } else if (pdbg_get_proc() == PDBG_PROC_PST) {
+    rc = pst_dllQueryScom(i_target, o_queryData, i_address, i_detail);
   } else {
     return ECMD_FUNCTION_NOT_SUPPORTED;
   }
@@ -1608,6 +1613,8 @@ uint32_t dllGetScom(const ecmdChipTarget &i_target, uint64_t i_address,
     rc = p9_dllGetScom(i_target, i_address, o_data);
   } else if (pdbg_get_proc() == PDBG_PROC_P10) {
     rc = p10_dllGetScom(i_target, i_address, o_data);
+  } else if (pdbg_get_proc() == PDBG_PROC_PST) {
+    rc = pst_dllGetScom(i_target, i_address, o_data);
   } else {
     return ECMD_FUNCTION_NOT_SUPPORTED;
   }
@@ -1627,6 +1634,8 @@ uint32_t dllPutScom(const ecmdChipTarget &i_target, uint64_t i_address,
     rc = p9_dllPutScom(i_target, i_address, i_data);
   } else if (pdbg_get_proc() == PDBG_PROC_P10) {
     rc = p10_dllPutScom(i_target, i_address, i_data);
+  } else if (pdbg_get_proc() == PDBG_PROC_PST) {
+    rc = pst_dllPutScom(i_target, i_address, i_data);
   } else {
     return ECMD_FUNCTION_NOT_SUPPORTED;
   }
